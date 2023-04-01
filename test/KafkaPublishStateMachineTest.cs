@@ -14,13 +14,13 @@ using static Mass.Transit.Outbox.Repo.Replicate.test.TestFramework.Assertions.De
 namespace Mass.Transit.Outbox.Repo.Replicate.test;
 
 [Collection(nameof(TestCollection))]
-public class UnitTest1 : IClassFixture<ServiceFixture>
+public class KafkaPublishStateMachineTest : IClassFixture<ServiceFixture>
 {
     private readonly ServiceFixture _serviceFixture;
     private readonly ITestHarness _harness;
     private readonly Faker _faker;
 
-    public UnitTest1(ITestOutputHelper testOutputHelper, ServiceFixture serviceFixture)
+    public KafkaPublishStateMachineTest(ITestOutputHelper testOutputHelper, ServiceFixture serviceFixture)
     {
         serviceFixture.TestOutputHelper = testOutputHelper;
         _serviceFixture = serviceFixture;

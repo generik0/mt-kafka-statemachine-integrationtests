@@ -1,18 +1,14 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using Mass.Transit.Outbox.Repo.Replicate.core.Configurations;
+﻿using Mass.Transit.Outbox.Repo.Replicate.core.Configurations;
 using Mass.Transit.Outbox.Repo.Replicate.test.TestFramework;
 using MassTransit;
 using MassTransit.EntityFrameworkCoreIntegration;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Microsoft.Extensions.Configuration;
 
 namespace Mass.Transit.Outbox.Repo.Replicate.core;
 
 public class MyDbContext : DbContext
 {
-    private readonly string _connectionString = NpgSqlDockerComposeFixture.ConnectionStringTemplate;
-    private const string ConnectionStringKey = "BILLING_SUMMARY_DB_CONNECTION_STRING";
+    private readonly string _connectionString = string.Format(NpgSqlDockerComposeFixture.ConnectionStringTemplate, NpgSqlDockerComposeFixture.DatabaseName);
     
     public DbSet<MessageLog>? MessageLogs { get; set; }
 

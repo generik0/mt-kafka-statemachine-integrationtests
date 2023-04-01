@@ -15,6 +15,17 @@ public class ServiceFixture
     private static IHost _host = null!;
     public IServiceProvider? ServiceProvider { get; set; }
 
+    public ServiceFixture (NpgSqlDockerComposeFixture npgSqlDockerComposeFixture, 
+        AzureRiteStorageFixture azureRiteStorageFixture, 
+    KafkaDockerComposeFixture kafkaDockerComposeFixture)
+    {
+
+        azureRiteStorageFixture.StartOnce();
+        kafkaDockerComposeFixture.StartOnce();
+        npgSqlDockerComposeFixture.StartAndEnsureMigrated();
+    }
+    
+
     public IServiceProvider GetOrCreateServiceProvider()
     {
         return ServiceProvider ??= CreateServiceProvider();

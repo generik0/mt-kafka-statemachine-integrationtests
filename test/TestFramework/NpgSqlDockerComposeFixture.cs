@@ -10,6 +10,7 @@ public class NpgSqlDockerComposeFixture
 {
     private readonly IMessageSink _diagnosticMessageSink;
     public static readonly object Lock = new();
+    private bool _migrated;
 
     public NpgSqlDockerComposeFixture(IMessageSink diagnosticMessageSink)
     {
@@ -53,7 +54,8 @@ public class NpgSqlDockerComposeFixture
     public bool StartAndEnsureMigrated()
     {
         StartOnce();
-
+        if(_migrated) return true;
+        _migrated = true;
         var dbContext = new MyDbContext();
 
         dbContext!.Database.EnsureDeleted();
@@ -61,12 +63,14 @@ public class NpgSqlDockerComposeFixture
         optionsBuilder.UseNpgsql(string.Format(ConnectionStringTemplate, "postgres"));
         var migrationDbContext = new DbContext(optionsBuilder.Options);
         migrationDbContext.Database.ExecuteSqlRaw(
-            $"CREATE DATABASE \"{GetType().Assembly.GetName().Name}\" WITH OWNER = postgres ENCODING = 'UTF8' TABLESPACE = pg_default CONNECTION LIMIT = -1;");
+            $"CREATE DATABASE \"{DatabaseName}\" WITH OWNER = postgres ENCODING = 'UTF8' TABLESPACE = pg_default CONNECTION LIMIT = -1;");
 
         dbContext.Database.ExecuteSqlRaw("create extension if not exists pg_trgm;");
         dbContext.Database.EnsureCreated();
         return true;
     }
 
-    public static string ConnectionStringTemplate => "Host=localhost;Port=54320;Database={0};Username=postgres;Password=postgres;";
+    public static string ConnectionStringTemplate => "Host=localhost;Database={0};Integrated Security=True;Username=postgres;Include Error Detail=true;Maximum Pool Size=10";
+    // "Host=localhost;Port=5432;Database={0};Username=postgres;Password=postgres;";
+    public static string DatabaseName = typeof(MyDbContext).Assembly.GetName().Name!;
 }

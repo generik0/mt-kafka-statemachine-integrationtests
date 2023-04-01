@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33516.290
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mass.Transit.Outbox.Repo.Replicate", "Mass.Transit.Outbox.Repo.Replicate.csproj", "{419A79DB-4E5B-461E-88D0-C9E7C70AFBAB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{419A79DB-4E5B-461E-88D0-C9E7C70AFBAB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{419A79DB-4E5B-461E-88D0-C9E7C70AFBAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{419A79DB-4E5B-461E-88D0-C9E7C70AFBAB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{419A79DB-4E5B-461E-88D0-C9E7C70AFBAB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D1A7EEE2-BB0E-4964-853B-9426BBFE52D9}
+	EndGlobalSection
+EndGlobal

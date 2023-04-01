@@ -5,7 +5,6 @@ using SqlKata.Compilers;
 using SqlKata.Execution;
 using System.Data;
 using System.Data.Common;
-using static Dapper.SqlMapper;
 
 namespace Mass.Transit.Outbox.Repo.Replicate.core.Repositories;
 
@@ -58,5 +57,22 @@ public class MessageLogRepository : IMessageLogRepository
             .Where(nameof(MessageLog.InvoiceNumber), invoiceNumber);
 
         await query.UpdateAsync(data, cancellationToken: cancellationToken);
+    }
+
+    public async Task<IEnumerable<MessageLog>> GetAllAsync(string invoiceNumber, CancellationToken cancellationToken)
+    {
+        var query = _queryFactory.Query(_tableName)
+            .Where(nameof(MessageLog.InvoiceNumber), invoiceNumber);
+
+        return await query.GetAsync<MessageLog>(cancellationToken: cancellationToken);
+    }
+
+    public async Task<MessageLog?> GetAsync(string invoiceNumber, Guid correlationId,
+        CancellationToken cancellationToken)
+    {
+        var query = _queryFactory.Query(_tableName)
+            .Where(nameof(MessageLog.CorrelationId), correlationId)
+            .Where(nameof(MessageLog.InvoiceNumber), invoiceNumber);
+        return (await query.GetAsync<MessageLog>(cancellationToken: cancellationToken))?.FirstOrDefault();
     }
 }

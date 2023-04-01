@@ -18,7 +18,7 @@ public class MyStateMachine : MassTransitStateMachine<MyState>
     public Request<MyState, BlobStore.Query, BlobStore.Response>? ProcessBlobRequest { get; set; }
     public Request<MyState, LogMessage.Query, LogMessage.Response>? ProcessLogMessageRequest { get; set; }
     public Request<MyState, CustomerInvoiceValidation.Query, CustomerInvoiceValidation.Response>? ProcessCustomerInvoiceValidationRequest { get; set; }
-
+    public Request<MyState, ProcessDuplicateInvoice.Query, ProcessDuplicateInvoice.Response>? ProcessDuplicateInvoiceRequest { get; set; }
 
     public MyStateMachine(ILogger<MyStateMachine> logger)
     {
@@ -29,12 +29,13 @@ public class MyStateMachine : MassTransitStateMachine<MyState>
         Request(() => ProcessBlobRequest);
         Request(() => ProcessLogMessageRequest);
         Request(() => ProcessCustomerInvoiceValidationRequest);
-
-
+        Request(() => ProcessDuplicateInvoiceRequest);
+        
         InitialState();
         ProcessBlobState();
         ProcessLogMessageState();
         ProcessCustomerInvoiceValidationState();
+        ProcessDuplicateInvoiceState();
 
         Next();
     }
@@ -137,8 +138,8 @@ public class MyStateMachine : MassTransitStateMachine<MyState>
                                 Status = "Ignored",
                                 Stage = "ConsumeTypeIgnoreStage"
                             });
-                        }).Finalize(),
-                    valid => valid.TransitionTo(ProcessNext)),
+                        }).TransitionTo(Ignored),
+                    valid => valid.TransitionTo(ProcessDuplicateInvoice)),
             When(ProcessCustomerInvoiceValidationRequest.TimeoutExpired)
                 .Then(x =>
                 {
@@ -169,6 +170,67 @@ public class MyStateMachine : MassTransitStateMachine<MyState>
                 .Finalize()
         );
     }
+
+    private void ProcessDuplicateInvoiceState()
+    {
+        WhenEnter(ProcessDuplicateInvoice, f =>
+        {
+            f.Then(x => _logger.LogDebug(
+                "Continuing to Financial Operations DuplicateInvoice. InvoiceNumber: {0}.. Blob url: {1}", x.Saga.InvoiceNumber, x.Saga.BlobUrl));
+            return f.Request(ProcessDuplicateInvoiceRequest,
+                x => new ProcessDuplicateInvoice.Query(x.Saga.InvoiceNumber, x.Saga.MessageSentAt, x.Saga.InvoiceDate, x.Saga.CorrelationId))
+                .TransitionTo(ProcessDuplicateInvoiceRequest!.Pending);
+        });
+
+        During(ProcessDuplicateInvoiceRequest!.Pending,
+            When(ProcessDuplicateInvoiceRequest.Completed)
+                .Then(x => _logger.LogDebug(
+                    "DuplicateInvoice request.Invoice number: {0}. Blob url: {1} ", x.Saga.InvoiceNumber, x.Saga.BlobUrl))
+                .IfElse(context => !context.Message.IsValid,
+                    ignored =>
+                        ignored.Then(f =>
+                            {
+                                _logger.LogInformation(
+                                    "Ignoring message it is not the latest message. InvoiceNumber: {0}.",
+                                    f.Saga.InvoiceNumber);
+                                f.Publish(new LogMessageCommonUpdate.Command(f.Saga.InvoiceNumber, f.Saga.CorrelationId)
+                                {
+                                    Status = "Ignored",
+                                    Stage = "ConsumeDuplicateIgnoreStage"
+                                });
+                            })
+                            .TransitionTo(Ignored),
+                valid => valid.TransitionTo(ProcessNext)),
+            When(ProcessDuplicateInvoiceRequest.TimeoutExpired)
+                .Then(x =>
+                {
+                    _logger.LogError(
+                        $"Unable to process DuplicateInvoice .Invoice number due to timeout: {x.Saga.InvoiceNumber}. Blob url: {x.Saga.BlobUrl},");
+                    x.Publish(new LogMessageCommonUpdate.Command(x.Saga.InvoiceNumber, x.Saga.CorrelationId)
+                    {
+                        Status = "Failed",
+                        Stage = "ConsumeDuplicateFailedStage",
+                        IsError = true
+                    });
+                })
+                .Finalize(),
+            When(ProcessDuplicateInvoiceRequest.Faulted)
+                .Then(x =>
+                {
+                    _logger.LogError(
+                        "Unable to process DuplicateInvoice to log message.Invoice number: {0}. Blob url: {1},",
+                        x.Saga.InvoiceNumber, x.Saga.BlobUrl);
+                    x.Publish(new LogMessageCommonUpdate.Command(x.Saga.InvoiceNumber, x.Saga.CorrelationId)
+                    {
+                        Status = "Failed",
+                        Stage = "ConsumeDuplicateFailedStage",
+                        IsError = true
+                    });
+                })
+                .Finalize());
+    }
+
+    public State ProcessDuplicateInvoice { get; set; }
 
     public State FaultedLogMessageFailed { get; set; }
 

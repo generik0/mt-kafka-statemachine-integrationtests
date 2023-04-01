@@ -2,8 +2,8 @@
 
 namespace Mass.Transit.Outbox.Repo.Replicate.test.TestFramework;
 
-[CollectionDefinition(nameof(TestCollection))]
-public class TestCollection : ICollectionFixture<NpgSqlDockerComposeFixture>, 
+[CollectionDefinition(nameof(MyTestCollection))]
+public class MyTestCollection : ICollectionFixture<NpgSqlDockerComposeFixture>, 
     ICollectionFixture<AzureRiteStorageFixture>, 
     ICollectionFixture<KafkaDockerComposeFixture>
 {

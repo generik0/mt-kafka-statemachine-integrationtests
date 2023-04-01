@@ -1,0 +1,22 @@
+{
+    "customerInvoice": {
+      "messageHeader": {
+        "messageSentAt": "2023-03-15T08:59:45Z",
+        "type": "FINANCIAL_PLATFORM_EXPORT",
+        "messageReceivingPartner": "FINOPS"
+      },
+        "invoice": {
+            "invoiceHeader": {
+                "invoiceNumber": "2303CNOEI00000002097",
+                "invoiceType": "O",
+                "invoiceDate": "2023-03-15"
+            },
+            "invoiceItem": [{
+                    "itemNumber": "769101"
+                }, {
+                    "itemNumber": "769102"
+                }
+            ]
+        }
+    }
+}

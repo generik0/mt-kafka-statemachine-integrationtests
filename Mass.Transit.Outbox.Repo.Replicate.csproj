@@ -46,7 +46,10 @@
     <None Update="postgres-docker-compose.yml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="test\Test_Data\InboundCustomerOrder\Invoice.json">
+    <None Update="test\Test_Data\Sample CREDIT_NOTES.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="test\Test_Data\Sample FINAL_INVOICE.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

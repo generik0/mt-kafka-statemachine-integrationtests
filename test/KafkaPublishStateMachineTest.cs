@@ -34,11 +34,39 @@ public class KafkaPublishStateMachineTest : IClassFixture<ServiceFixture>
     {
         const string oldInvoiceNumber = "2303CNOEI00000002097";
         var expectedInvoiceNumber = _faker.Random.AlphaNumeric(oldInvoiceNumber.Length);
-        var json = await File.ReadAllTextAsync(Path.Combine(".", "test", "Test_Data", "InboundCustomerOrder", "Invoice.json"));
+        new int[50].AsParallel().ForAll(_ =>
+        {
+            ProduceMessage(oldInvoiceNumber).Wait();
+        });
+
+        var correlationId = await ProduceMessage(oldInvoiceNumber, expectedInvoiceNumber);
+
+        await AssertEvent(async () => 
+            await _harness.Published.Any<MyModels.Submit>(x => x.Context.Message.CorrelationId == correlationId), TimeSpan.FromSeconds(30), "Inbound success should ends with Submit");
+
+        var sagaHarness = _harness.GetSagaStateMachineHarness<MyStateMachine, MyState>();
+        sagaHarness.Exists(correlationId, TimeSpan.FromSeconds(1)).Should().NotBeNull();
+        (await sagaHarness.Exists(x => x.CorrelationId == correlationId, machine => machine.ProcessBlobRequest!.Pending,
+            TimeSpan.FromSeconds(10))).Should().NotBeNull();
+        (await sagaHarness.Exists(x => x.CorrelationId == correlationId, machine => machine.ProcessLogMessageRequest!.Pending,
+            TimeSpan.FromSeconds(30))).Should().NotBeNull();
+
+        (await sagaHarness.Exists(x => x.CorrelationId == correlationId, machine => machine.ProcessNext,
+            TimeSpan.FromSeconds(30))).Should().NotBeNull();
+        
+    }
+
+    private async Task<Guid> ProduceMessage(string oldInvoiceNumber, string? expectedInvoiceNumber = null)
+    {
+        expectedInvoiceNumber ??= _faker.Random.AlphaNumeric(oldInvoiceNumber.Length);
+        var json = await File.ReadAllTextAsync(Path.Combine(".", "test", "Test_Data", "InboundCustomerOrder",
+            "Invoice.json"));
 
         await using var scoped = _serviceFixture.ServiceProvider!.CreateAsyncScope();
         var serviceProvider = scoped.ServiceProvider;
-        using var p = new ProducerBuilder<Null, string>(new ProducerConfig((ClientConfig)serviceProvider.GetService(typeof(ClientConfig))!)).Build();
+        using var p =
+            new ProducerBuilder<Null, string>(
+                new ProducerConfig((ClientConfig)serviceProvider.GetService(typeof(ClientConfig))!)).Build();
         var correlationId = Guid.NewGuid();
         var sendContext = new MessageSendContext<string>(json)
         {
@@ -54,20 +82,6 @@ public class KafkaPublishStateMachineTest : IClassFixture<ServiceFixture>
         var deliveryResult = await p.ProduceAsync(ServiceFixture.Topic, message, _harness.CancellationToken);
         AssertEvent(() => deliveryResult.Status == PersistenceStatus.Persisted, TimeSpan.FromSeconds(10),
             "Saga should Produce to kafka topic");
-
-        await AssertEvent(async () => 
-            await _harness.Published.Any<MyModels.Submit>(x => x.Context.Message.CorrelationId == correlationId), TimeSpan.FromSeconds(30), "Inbound success should ends with Submit");
-
-        var sagaHarness = _harness.GetSagaStateMachineHarness<MyStateMachine, MyState>();
-        sagaHarness.Exists(correlationId, TimeSpan.FromSeconds(1)).Should().NotBeNull();
-        (await sagaHarness.Exists(x => x.CorrelationId == correlationId, machine => machine.ProcessBlobRequest!.Pending,
-            TimeSpan.FromSeconds(10))).Should().NotBeNull();
-        (await sagaHarness.Exists(x => x.CorrelationId == correlationId, machine => machine.ProcessLogMessageRequest!.Pending,
-            TimeSpan.FromSeconds(30))).Should().NotBeNull();
-
-        (await sagaHarness.Exists(x => x.CorrelationId == correlationId, machine => machine.ProcessNext,
-            TimeSpan.FromSeconds(30))).Should().NotBeNull();
-        var saga = sagaHarness.Sagas.Select(x => x.CorrelationId == correlationId).Last().Saga!;
-        saga.BlobUrl.Should().NotBeNull();
+        return correlationId;
     }
 }

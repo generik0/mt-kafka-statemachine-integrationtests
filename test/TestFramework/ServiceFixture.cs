@@ -69,13 +69,16 @@ public class ServiceFixture : IDisposable
                 {
                     registration.AddDelayedMessageScheduler();
                     registration.SetKebabCaseEndpointNameFormatter();
-                    registration.AddEntityFrameworkOutbox<MyDbContext>(o => { o.UsePostgres(); });
+                    registration.AddEntityFrameworkOutbox<MyDbContext>(o =>
+                    {
+                        o.UsePostgres();
+                    });
                     AddConsumers(registration);
 
                     registration.UsingInMemory((context, cfg) =>
                     {
                         cfg.UseDelayedMessageScheduler();
-                        cfg.ConfigureEndpoints(context, new DefaultEndpointNameFormatter("default", false));
+                        cfg.ConfigureEndpoints(context, new DefaultEndpointNameFormatter("Billing_Summary_", true));
                         cfg.ConfigureJsonSerializerOptions(settings =>
                         {
                             settings.Converters.Add(NodaTime.Serialization.SystemTextJson.NodaConverters

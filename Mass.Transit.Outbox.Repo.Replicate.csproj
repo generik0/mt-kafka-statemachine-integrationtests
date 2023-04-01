@@ -10,7 +10,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Bogus" Version="34.0.2" />
     <PackageReference Include="FastMember" Version="1.5.0" />
+    <PackageReference Include="FluentAssertions" Version="6.10.0" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.5.1" />
     <PackageReference Include="MassTransit.Azure.Storage" Version="8.0.14" />
     <PackageReference Include="MassTransit.EntityFrameworkCore" Version="8.0.14" />
@@ -42,6 +44,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="postgres-docker-compose.yml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="test\Test_Data\InboundCustomerOrder\Invoice.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

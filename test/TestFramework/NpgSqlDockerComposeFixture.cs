@@ -70,7 +70,7 @@ public class NpgSqlDockerComposeFixture
         return true;
     }
 
-    public static string ConnectionStringTemplate => "Host=localhost;Database={0};Integrated Security=True;Username=postgres;Include Error Detail=true;Maximum Pool Size=10";
-    // "Host=localhost;Port=5432;Database={0};Username=postgres;Password=postgres;";
+    public static string ConnectionStringTemplate => //"Host=localhost;Database={0};Integrated Security=True;Username=postgres;Include Error Detail=true;Maximum Pool Size=10";
+     "Host=localhost;Port=54320;Database={0};Username=postgres;Password=postgres;Include Error Detail=true;";
     public static string DatabaseName = typeof(MyDbContext).Assembly.GetName().Name!;
 }

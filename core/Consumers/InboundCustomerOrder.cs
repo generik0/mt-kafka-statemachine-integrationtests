@@ -46,13 +46,7 @@ public static class InboundCustomerOrder
             {
                 throw new ValidatorSlim.ValidationException(model.Invoice?.InvoiceHeader?.InvoiceNumber ?? "Invoice number is unknown", validation.Errors);
             }
-
-            if (model.MessageHeader.MessageReceivingPartner != MyModels.Model.MessageHeader.MessageReceivingPartnerEnum.FINOPS)
-            {
-                _logger.LogInformation($"Ignoring message as it is not delivered to Financial Operations. InvoiceNumber: {0}.", model.Invoice.InvoiceHeader.InvoiceNumber);
-                return;
-            }
-
+            
             var invoiceNumber = model.Invoice.InvoiceHeader.InvoiceNumber;
 
             var messageSentAt = TryInstantUtc(model.MessageHeader.MessageSentAt, invoiceNumber,

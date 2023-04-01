@@ -1,18 +1,23 @@
 ﻿using System.Text.Json.Serialization;
 using Confluent.Kafka;
+using Dapper;
 using FluentValidation;
 using Mass.Transit.Outbox.Repo.Replicate.core;
 using Mass.Transit.Outbox.Repo.Replicate.core.Consumers;
 using Mass.Transit.Outbox.Repo.Replicate.core.Repositories;
+using Mass.Transit.Outbox.Repo.Replicate.core.Repositories.SqlTypeHandlers;
+using Mass.Transit.Outbox.Repo.Replicate.test.TestFramework.Logging;
 using MassTransit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Xunit.Abstractions;
 
 namespace Mass.Transit.Outbox.Repo.Replicate.test.TestFramework;
 
-public class ServiceFixture
+public class ServiceFixture : IDisposable
 {
-    private static IHost _host = null!;
+    public IHost Host { get; set; } = null!;
     public IServiceProvider? ServiceProvider { get; set; }
 
     public ServiceFixture (NpgSqlDockerComposeFixture npgSqlDockerComposeFixture, 
@@ -31,11 +36,27 @@ public class ServiceFixture
         return ServiceProvider ??= CreateServiceProvider();
     }
 
-    private static IServiceProvider CreateServiceProvider()
+    private static readonly XUnitLoggerCategoryMinValue[] LogMinValues = {
+        new("MassTransit", LogLevel.Information), 
+        new("MassTransit.Testing.KafkaTestHarnessHostedService", LogLevel.Warning), 
+        new("FastEndpoints.Swagger.ValidationSchemaProcessor", LogLevel.Warning), 
+        new("FastEndpoints.StartupTimer", LogLevel.Warning), 
+        new("Microsoft.EntityFrameworkCore.Infrastructure", LogLevel.Warning),
+        new("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning),
+        new("Microsoft.EntityFrameworkCore.Database.Query", LogLevel.Warning),
+    };
+
+    private IServiceProvider CreateServiceProvider()
     {
-        _host = Host.CreateDefaultBuilder()
+        Host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
+            .ConfigureLogging(loggingBuilder =>
+            {
+                loggingBuilder.ClearProviders();
+                loggingBuilder.Services.AddSingleton<ILoggerProvider>(_ => new XUnitLoggerProvider(TestOutputHelper!, LogMinValues));
+            })
             .ConfigureServices((hostContext, services) =>
             {
+                SqlMapper.AddTypeHandler(InstantHandler.Default);
                 services.AddValidatorsFromAssemblyContaining<InboundCustomerOrder.Consumer>();
                 services.AddScoped<IMessageLogRepository, MessageLogRepository>();
                 services.AddDbContext<MyDbContext>(x => x.EnableSensitiveDataLogging());
@@ -43,7 +64,8 @@ public class ServiceFixture
                 {
                     options.CreateTopicsIfNotExists = true;
                     options.TopicNames = new[] { Topic };
-                }).AddMassTransitTestHarness(registration =>
+                });
+                services.AddMassTransitTestHarness(registration =>
                 {
                     registration.AddDelayedMessageScheduler();
                     registration.SetKebabCaseEndpointNameFormatter();
@@ -76,11 +98,18 @@ public class ServiceFixture
                             });
                         });
                     });
+
+                    registration.AddSagaStateMachine<MyStateMachine, MyState, MyStateDefinition>()
+                        .EntityFrameworkRepository(r =>
+                        {
+                            r.ExistingDbContext<MyDbContext>();
+                            r.UsePostgres();
+                        });
                 });
             }).Build();
 
-        _host.Run();
-        return _host.Services;
+        Host.StartAsync().Wait();
+        return Host.Services;
     }
 
     private static void AddConsumers(IRegistrationConfigurator registration)
@@ -98,5 +127,11 @@ public class ServiceFixture
         }
     }
 
-    public static string Topic => Guid.NewGuid().ToString();
+    public static string Topic = "MyTopic";
+    public ITestOutputHelper? TestOutputHelper { get; set; }
+
+    public void Dispose()
+    {
+        Host.StopAsync().Wait();
+    }
 }

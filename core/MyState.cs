@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using MassTransit;
 using NodaTime;
 
 #nullable disable
@@ -6,7 +7,7 @@ using NodaTime;
 namespace Mass.Transit.Outbox.Repo.Replicate.core;
 
 [ExcludeFromCodeCoverage]
-public class MyState
+public class MyState : SagaStateMachineInstance
 {
     public long Id { get; set; }
     public Guid CorrelationId { get; set; }

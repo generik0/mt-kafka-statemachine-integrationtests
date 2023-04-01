@@ -3,6 +3,7 @@ using FluentValidation;
 using FluentValidation.Results;
 using Mass.Transit.Outbox.Repo.Replicate.core.Repositories;
 using MassTransit;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Mass.Transit.Outbox.Repo.Replicate.core.Consumers;
@@ -13,38 +14,49 @@ public static class LogMessage
     {
         private readonly IValidator<Query> _validator;
         private readonly IMessageLogRepository _messageLogRepository;
+        private readonly ILogger<Consumer> _logger;
 
-        public Consumer(IValidator<Query> validator, IMessageLogRepository messageLogRepository)
+        public Consumer(IValidator<Query> validator, IMessageLogRepository messageLogRepository, ILogger<Consumer> logger)
         {
             _validator = validator;
             _messageLogRepository = messageLogRepository;
+            _logger = logger;
         }
 
         public async Task Consume(ConsumeContext<Query> context)
         {
-            var validation = await _validator.ValidateAsync(context.Message, context.CancellationToken);
-            if (!validation.IsValid)
+            try
             {
-                throw new Validator.ValidationException(context.Message.InvoiceNumber, validation.Errors);
+                var validation = await _validator.ValidateAsync(context.Message, context.CancellationToken);
+                if (!validation.IsValid)
+                {
+                    throw new Validator.ValidationException(context.Message.InvoiceNumber, validation.Errors);
+                }
+
+                var message = context.Message;
+
+                var entity = new MessageLog
+                {
+                    BlobUrl = message.BlobUrl,
+                    CorrelationId = message.CorrelationId,
+                    InvoiceDate = context.Message.CreateDate,
+                    MessageSentAt = context.Message.RegistrationDate,
+                    InvoiceNumber = message.InvoiceNumber,
+                    Status = "InProgress",
+                    Stage = "My Stage",
+                    IsError = false,
+                    Retries = 0
+                };
+                await _messageLogRepository.InsertGetIdAsync(entity, context.CancellationToken);
+
+                await context.RespondAsync(new Response(context.CorrelationId!.Value));
             }
-
-            var message = context.Message;
-
-            var entity = new MessageLog
+            catch (Exception exception)
             {
-                BlobUrl = message.BlobUrl,
-                CorrelationId = message.CorrelationId,
-                InvoiceDate = context.Message.CreateDate,
-                MessageSentAt = context.Message.RegistrationDate,
-                InvoiceNumber = message.InvoiceNumber,
-                Status = "InProgress",
-                Stage = "My Stage",
-                IsError = false,
-                Retries = 0
-            };
-            await _messageLogRepository.InsertGetIdAsync(entity, context.CancellationToken);
-
-            await context.RespondAsync(new Response(context.CorrelationId!.Value));
+                _logger.LogError(exception, "LogMessage failed");
+                throw;
+            }
+            
         }
     }
 
